@@ -40,16 +40,16 @@ impl CryptoInfo {
         self.info.as_ref().and_then(|s| Some(get_encrypted_size(s.as_bytes().len() as u64))).unwrap_or(0) as u32
     }
 
-    pub fn size(&self) -> u64 {
+    pub fn data_size(&self) -> u64 {
         self.encrypted_thumb_size() as u64 + self.encrypted_info_size() as u64
     } 
 
-    pub fn full_size(&self) -> u64 {
-        Self::header_size() + self.size()
+    pub fn size(&self) -> u64 {
+        Self::header_size() + self.data_size()
     } 
 
-    pub fn full_size_with_iv(&self) -> u64 {
-        Self::header_size() + 16 + self.size()
+    pub fn size_with_iv(&self) -> u64 {
+        16 + self.size()
     } 
 
     pub fn header_size() -> u64 {
@@ -611,13 +611,13 @@ mod tests {
 
 
         let expected = 4 + 4 + 32 + 256 + 160 + 32;
-        assert_eq!(info.full_size(), expected);
+        assert_eq!(info.size(), expected);
 
         let expected = 16 + 4 + 4 + 32 + 256 + 160 + 32;
-        assert_eq!(info.full_size_with_iv(), expected);
+        assert_eq!(info.size_with_iv(), expected);
 
         let expected = 160 + 32;
-        assert_eq!(info.size(), expected);
+        assert_eq!(info.data_size(), expected);
 
     }
 
