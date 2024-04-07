@@ -1,0 +1,20 @@
+[package]
+name = "redseat-crypto"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["arnaud jezequel"]
+description = "Common description for plugin creation"
+homepage = "https://github.com/neckaros/redseat-crypto/" 
+readme = "README.md"
+repository = "https://github.com/neckaros/redseat-crypto/"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.8.5"
+rust-crypto = "0.2.36"
+serde = { version = "1", features = ["derive"], optional = true }
+
+[dev-dependencies]
+base64 = "0.22.0"
