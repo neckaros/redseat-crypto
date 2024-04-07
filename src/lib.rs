@@ -5,7 +5,7 @@ use std::io::{Read, Write, Seek, SeekFrom, Result, Error, ErrorKind};
 
 use crypto::hmac::Hmac;
 use crypto::pbkdf2;
-use crypto::sha2::Sha256;
+use crypto::sha1::Sha1;
 use crypto::symmetriccipher::{BlockDecryptor, BlockEncryptor, Encryptor, Decryptor};
 use crypto::blockmodes::{PkcsPadding, CbcEncryptor, CbcDecryptor, EncPadding, DecPadding};
 use crypto::buffer::{RefReadBuffer, RefWriteBuffer, BufferResult, WriteBuffer, ReadBuffer};
@@ -157,6 +157,7 @@ impl CryptoInfo {
             let mut buffer = [0; 16];
             let mut write_buffer = RefWriteBuffer::new(&mut buffer);
             let mut decryted_thumb: Vec<u8> = vec![];
+            reader.dec.reset(&iv);
             loop {
                 let result = reader.dec.decrypt(&mut read_buffer, &mut write_buffer, true) .map_err(|e| Error::new(ErrorKind::Other, format!("thumb decryption error: {:?}", e)))?;
 
@@ -176,7 +177,7 @@ impl CryptoInfo {
             Some(decryted_thumb)
         };
 
-        let info = if size_thumb == 0 {
+        let info = if size_info == 0 {
             None
         } else {
             let mut crypt_buf = vec![0u8; size_info as usize];
@@ -245,7 +246,7 @@ pub fn random_iv_for_encryptor<E: BlockEncryptor>(enc: E) -> Vec<u8> {
 
 pub fn derive_key(password: &str, salt: &[u8]) -> [u8; KEY_SIZE] {
     let mut dk = [0u8; KEY_SIZE]; // derived key
-    let mut mac = Hmac::new(Sha256::new(), password.as_bytes());
+    let mut mac = Hmac::new(Sha1::new(), password.as_bytes());
     pbkdf2::pbkdf2(&mut mac, salt, 1000, &mut dk);
     dk
 }
@@ -576,7 +577,7 @@ impl<D: BlockDecryptor, R: Read + Seek> Seek for AesReader<D, R> {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs::{remove_file, File}, path::PathBuf, str::FromStr};
+    use std::{fs::{remove_file, File}, io::copy, path::PathBuf, str::FromStr};
 
     use crypto::aessafe::{AesSafe256Decryptor, AesSafe256Encryptor};
     use base64::{engine::general_purpose::URL_SAFE, Engine as _};
@@ -688,4 +689,30 @@ mod tests {
         }
         Ok(())
     }
+
+/* 
+    #[test]
+    fn decrypt_file() -> Result<()> {
+        let test_path = PathBuf::from_str("test_data/file").unwrap();
+    
+        let reader = File::open(&test_path)?;
+        let salt = URL_SAFE.decode(SALT).unwrap();
+        let key = derive_key("XXXXXX", &salt);
+
+        let decryptor = AesSafe256Decryptor::new(&key);
+
+        let (dec_infos ,mut aes_reader) = AesReader::new_with_infos(reader, decryptor)?;
+        println!("INfos: {:?}", dec_infos);
+        
+        let output_path = PathBuf::from_str("test_data/file.heic").unwrap();
+        if output_path.exists() {
+            remove_file(&output_path)?;
+        }
+        let mut writer = File::create(output_path)?;
+
+        copy(&mut aes_reader, &mut writer)?;
+    
+        Ok(())
+    }
+    */
 }
