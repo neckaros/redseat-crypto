@@ -1,7 +1,7 @@
 
 
 
-use std::io::{Read, Write, Seek, SeekFrom, Result, Error, ErrorKind};
+use std::io::{self, Error, ErrorKind, Read, Result, Seek, SeekFrom, Write};
 
 use crypto::hmac::Hmac;
 use crypto::pbkdf2;
@@ -132,20 +132,20 @@ impl CryptoInfo {
         //I Bytes for the encrypted info
         let mut buf = vec![0u8; 4];
         reader.read_exact_raw(&mut buf)?;
-        let size_thumb = u32::from_be_bytes(buf[0..4].try_into().map_err(|_| std::io::ErrorKind::Other)?);
+        let size_thumb = u32::from_be_bytes(buf[0..4].try_into().map_err(|err| io::Error::new(io::ErrorKind::Other, err))?);
 
         let mut buf = vec![0u8; 4];
         reader.read_exact_raw(&mut buf)?;
-        let size_info = u32::from_be_bytes(buf[0..4].try_into().map_err(|_| std::io::ErrorKind::Other)?);
+        let size_info = u32::from_be_bytes(buf[0..4].try_into().map_err(|err| io::Error::new(io::ErrorKind::Other, err))?);
 
 
         let mut buf = vec![0u8; 32];
         reader.read_exact_raw(&mut buf)?;
-        let thumb_mime = String::from_utf8(buf).map_err(|_| std::io::ErrorKind::Other)?.trim_end().to_string();
+        let thumb_mime = String::from_utf8(buf).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?.trim_end().to_string();
 
         let mut buf = vec![0u8; 256];
         reader.read_exact_raw(&mut buf)?;
-        let file_mime = String::from_utf8(buf).map_err(|_| std::io::ErrorKind::Other)?.trim_end().to_string();
+        let file_mime = String::from_utf8(buf).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?.trim_end().to_string();
 
 
         let thumb = if size_thumb == 0 {
@@ -428,7 +428,8 @@ impl<D: BlockDecryptor, R: Read> AesReader<D, R> {
     pub fn new_with_infos(mut reader: R, dec: D) -> Result<(CryptoInfo, AesReader<D, R>)> {
         let mut iv = vec![0u8; dec.block_size()];
         reader.read_exact(&mut iv)?;
-        
+
+
         let mut aes_reader = AesReader {
             reader,
             block_size: dec.block_size(),
@@ -577,7 +578,7 @@ impl<D: BlockDecryptor, R: Read + Seek> Seek for AesReader<D, R> {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs::{remove_file, File}, io::copy, path::PathBuf, str::FromStr};
+    use std::{fs::{remove_file, File}, path::PathBuf, str::FromStr};
 
     use crypto::aessafe::{AesSafe256Decryptor, AesSafe256Encryptor};
     use base64::{engine::general_purpose::URL_SAFE, Engine as _};
